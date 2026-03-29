@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Library Management System | DOE A&N Islands</title>
+<link rel="stylesheet" href="/static/shared.css">
+<style>
+body {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh; padding: 1rem;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 15% 10%, rgba(26,143,216,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 85% 90%, rgba(224,90,26,0.1) 0%, transparent 60%);
+}
+.theme-toggle-fixed {
+  position: fixed; top: 12px; right: 12px; z-index: 300;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surface); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; transition: all 0.2s;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+.theme-toggle-fixed:hover { transform: rotate(20deg); border-color: var(--ocean); }
+
+.login-wrap {
+  width: 100%; max-width: 460px; position: relative; z-index: 10;
+  animation: popIn 0.55s cubic-bezier(0.16,1,0.3,1) both;
+}
+.login-header {
+  background: linear-gradient(145deg, #0B4A7E 0%, #0B6BA8 50%, var(--ocean2) 100%);
+  border-radius: 18px 18px 0 0; padding: 1.75rem 1.75rem 1.5rem; text-align: center;
+  position: relative; overflow: hidden;
+}
+.login-header::before {
+  content: ''; position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Crect x='0' y='0' width='15' height='15'/%3E%3Crect x='15' y='15' width='15' height='15'/%3E%3C/g%3E%3C/svg%3E");
+}
+.logo-ring {
+  width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 0.85rem;
+  padding: 3px; background: linear-gradient(135deg, #F59E0B, #fff, #FF7A40);
+  box-shadow: 0 0 0 5px rgba(255,255,255,0.15), 0 8px 30px rgba(0,0,0,0.25);
+  animation: glow 3.5s ease-in-out infinite; position: relative; z-index: 1;
+}
+@keyframes glow {
+  0%,100% { box-shadow: 0 0 0 5px rgba(255,255,255,0.15), 0 8px 30px rgba(0,0,0,0.25); }
+  50%      { box-shadow: 0 0 0 9px rgba(255,255,255,0.2), 0 12px 38px rgba(0,0,0,0.32); }
+}
+.logo-ring img { width:100%;height:100%;border-radius:50%;object-fit:cover;display:block; }
+.login-org   { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 0.2rem; position: relative; z-index: 1; }
+.login-title { font-size: 17px; font-weight: 900; color: #fff; line-height: 1.25; position: relative; z-index: 1; }
+.login-sub   { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 0.3rem; position: relative; z-index: 1; }
+.tricolor    { height: 5px; background: linear-gradient(90deg, #FF9933 33.33%, #fff 33.33% 66.66%, #138808 66.66%); }
+
+.login-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 18px 18px;
+  padding: 1.5rem 1.75rem 1.75rem;
+  box-shadow: 0 20px 50px var(--shadow);
+  transition: background 0.3s;
+}
+
+/* Tabs */
+.tab-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 0; background: var(--surface2); border-radius: 9px; padding: 3px; margin-bottom: 1.4rem; }
+.tab-btn { padding: 0.55rem; border: none; border-radius: 7px; font-family: var(--font); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--ink4); display: flex; align-items: center; justify-content: center; gap: 0.35rem; }
+.tab-btn.active { background: var(--surface); color: var(--ocean); box-shadow: 0 2px 8px var(--shadow); }
+.tab-btn.active.guest { color: var(--emerald); }
+.tp { display: none; animation: popIn 0.2s ease; } .tp.active { display: block; }
+
+/* Form fields */
+.fg { margin-bottom: 1rem; }
+.iw { position: relative; }
+.ii { position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); font-size: 13px; pointer-events: none; }
+.form-control { padding-left: 2.4rem; }
+.pw-eye { position: absolute; right: 0.8rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 13px; color: var(--ink4); transition: color 0.15s; padding: 0; }
+.pw-eye:hover { color: var(--ocean); }
+
+.btn-staff { width: 100%; } /* btn-primary style already */
+.guest-info { margin-top: 1rem; padding: 0.75rem 1rem; background: var(--emer-lt); border: 1.5px solid rgba(10,138,94,0.25); border-radius: 9px; font-size: 12px; line-height: 1.65; color: var(--emerald); font-weight: 500; }
+.cred-box   { margin-top: 1rem; padding: 0.75rem 1rem; background: var(--ocean-lt); border: 1.5px solid rgba(11,107,168,0.2); border-radius: 9px; font-size: 12px; line-height: 1.75; color: var(--ink2); }
+.cred-box strong { color: var(--ocean); }
+
+/* Clock area on login */
+.login-clock { display: flex; flex-direction: column; align-items: center; margin: 1.1rem 0 0; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+footer.login-footer {
+  margin-top: 1.1rem; text-align: center; position: relative; z-index: 10;
+}
+</style>
+</head>
+<body>
+<canvas id="star-canvas"></canvas>
+<button class="theme-toggle-fixed" id="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
+
+<div class="login-wrap">
+  <div class="login-header">
+    <div class="logo-ring"><img src="/static/logo.png" alt="DOE Logo"></div>
+    <div class="login-org">Directorate of Education · A&N Islands</div>
+    <div class="login-title">Library Management System</div>
+    <div class="login-sub">Secure Portal</div>
+  </div>
+  <div class="tricolor"></div>
+  <div class="login-card">
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tab-staff" onclick="switchTab('staff')">🏛️ Staff Login</button>
+      <button class="tab-btn guest" id="tab-guest" onclick="switchTab('guest')">🙋 Visitor Login</button>
+    </div>
+
+    <!-- STAFF -->
+    <div class="tp active" id="tp-staff">
+      <div class="fg">
+        <label class="form-label">Username</label>
+        <div class="iw">
+          <span class="ii">👤</span>
+          <input type="text" class="form-control" id="username" placeholder="Enter your username" autocomplete="username">
+        </div>
+      </div>
+      <div class="fg">
+        <label class="form-label">Password</label>
+        <div class="iw" style="position:relative">
+          <span class="ii">🔑</span>
+          <input type="password" class="form-control" id="password" placeholder="Enter your password" autocomplete="current-password">
+          <button class="pw-eye" onclick="togglePw()" id="pw-eye">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="staff-btn" onclick="doStaffLogin()">Sign In to Portal</button>
+      <div class="msg-box" id="staff-err"></div>
+      <div class="cred-box">
+        <strong>Master Admin:</strong> masteradmin / Ma$t3r@2026<br>
+        <strong>Example Library:</strong> wandoor / Wn7kR2mP
+      </div>
+    </div>
+
+    <!-- GUEST -->
+    <div class="tp" id="tp-guest">
+      <div class="fg">
+        <label class="form-label">Select Your Library <span class="req">*</span></label>
+        <select class="form-control" id="guest-lib">
+          <option value="">— Choose your library —</option>
+          {% for lid, lname in libraries %}
+          <option value="{{ lid }}">{{ lname }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-success btn-full" id="guest-btn" onclick="doGuestLogin()">Enter as Visitor</button>
+      <div class="msg-box" id="guest-err"></div>
+      <div class="guest-info">👋 No password needed. Submit <strong>Feedback</strong> or <strong>Requisitions</strong> for your library.</div>
+    </div>
+
+    <div class="login-clock">
+      <canvas id="clock" width="72" height="72"></canvas>
+      <div class="clock-date-lbl" id="clock-date"></div>
+    </div>
+  </div>
+</div>
+
+<footer class="login-footer">
+  <div class="footer-copy">© 2026 Directorate of Education, Andaman &amp; Nicobar Islands. All rights reserved.</div>
+  <div class="footer-dev">Designed &amp; Developed by: Directorate of Education, A &amp; N Administration</div>
+  <div class="footer-visitors">Number of Visitors: <span id="visitor-count">—</span></div>
+  <div class="footer-browsers">
+    Supported Browsers:
+    <span class="browser-icon" title="Safari">🧭 Safari</span>
+    <span class="browser-icon" title="Firefox">🦊 Firefox</span>
+    <span class="browser-icon" title="Chrome">🌐 Chrome</span>
+    <span class="browser-icon" title="Edge">🔷 Edge</span>
+  </div>
+</footer>
+
+<script src="/static/shared.js"></script>
+<script>
+  document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') doStaffLogin(); });
+
+  function switchTab(t) {
+    ['staff','guest'].forEach(s => {
+      document.getElementById('tab-'+s).classList.toggle('active', s===t);
+      if (s==='guest') document.getElementById('tab-'+s).classList.toggle('active', s===t);
+      document.getElementById('tp-'+s).classList.toggle('active', s===t);
+    });
+    document.getElementById('tab-guest').classList.toggle('active guest', t==='guest');
+  }
+
+  function togglePw() {
+    const pw = document.getElementById('password'), btn = document.getElementById('pw-eye');
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+    btn.textContent = pw.type === 'password' ? '👁' : '🙈';
+  }
+
+  async function doStaffLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('staff-btn');
+    if (!username || !password) { showMsg('staff-err','error','Please enter username and password.'); return; }
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Authenticating…';
+    try {
+      const res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_type:'staff', username, password}) });
+      const data = await res.json();
+      if (data.success) { btn.innerHTML = '✅ Welcome, ' + data.display; setTimeout(() => window.location.href = '/dashboard', 600); }
+      else { showMsg('staff-err','error','❌ ' + (data.error||'Login failed.')); btn.disabled=false; btn.innerHTML='Sign In to Portal'; }
+    } catch(e) { showMsg('staff-err','error','Network error.'); btn.disabled=false; btn.innerHTML='Sign In to Portal'; }
+  }
+
+  async function doGuestLogin() {
+    const lib = document.getElementById('guest-lib').value;
+    const btn = document.getElementById('guest-btn');
+    if (!lib) { showMsg('guest-err','error','Please select your library.'); return; }
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Entering…';
+    try {
+      const res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_type:'guest', library_id: parseInt(lib)}) });
+      const data = await res.json();
+      if (data.success) { btn.innerHTML = '✅ ' + data.display; setTimeout(() => window.location.href = '/visitor', 600); }
+      else { showMsg('guest-err','error','❌ '+(data.error||'Failed.')); btn.disabled=false; btn.innerHTML='Enter as Visitor'; }
+    } catch(e) { showMsg('guest-err','error','Network error.'); btn.disabled=false; btn.innerHTML='Enter as Visitor'; }
+  }
+
+  startClock('clock', 'clock-date');
+</script>
+</body>
+</html>

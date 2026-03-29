@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Library Management System</title>
+<link rel="stylesheet" href="/static/shared.css">
+<style>
+body { padding-bottom: 2rem; }
+main { max-width: 860px; margin: 0 auto; padding: 1.75rem 1.25rem 3rem; position: relative; z-index: 1; }
+.hero-wrap { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.4rem; }
+.hero-main { background: linear-gradient(135deg, #0B4A7E 0%, var(--ocean) 55%, var(--ocean2) 100%); border-radius: var(--radius); padding: 1.3rem 1.6rem; flex: 1; box-shadow: 0 6px 24px rgba(11,107,168,0.28); position: relative; overflow: hidden; }
+.hero-main::after { content: '📚'; position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%); font-size: 4rem; opacity: 0.08; pointer-events: none; }
+.hero-title { font-size: 17px; font-weight: 900; color: #fff; }
+.hero-sub   { font-size: 12px; color: rgba(255,255,255,0.72); margin-top: 0.2rem; }
+.clock-card { background: var(--card-bg); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 110px; box-shadow: 0 2px 10px var(--shadow); transition: background 0.3s; }
+</style>
+</head>
+<body>
+<canvas id="star-canvas"></canvas>
+
+<!-- TICKER -->
+<div class="ticker-wrap"><div class="ticker-inner" id="ticker-inner"></div></div>
+
+<!-- NAV -->
+<nav class="main-nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <img class="nav-logo" src="/static/logo.png" alt="Logo">
+      <div>
+        <div class="nav-title-main">Directorate of Education, A&N Islands</div>
+        <div class="nav-title-sub">Library Management System</div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="user-pill">
+        <div class="user-avatar" id="user-av"></div>
+        <span class="user-name">{{ display }}</span>
+        <span class="role-tag {{ 'rt-master' if role=='master' else 'rt-admin' }}">{{ 'Master' if role=='master' else 'Admin' }}</span>
+      </div>
+      {% if role == 'master' %}
+      <button class="btn-nav violet" onclick="openPwModal()">🔑 Passwords</button>
+      {% endif %}
+      <a href="/report" target="_blank" class="btn-nav orange">📊 Reports</a>
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+      <button class="btn-nav danger" onclick="doLogout()">⏻ Exit</button>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <!-- HERO + CLOCK -->
+  <div class="hero-wrap">
+    <div class="hero-main">
+      <div class="hero-title">Welcome, {{ display }}!</div>
+      <div class="hero-sub">Submit and manage library item requisitions across A&N Islands</div>
+    </div>
+    <div class="clock-card">
+      <canvas id="clock" width="80" height="80"></canvas>
+      <div class="clock-date-lbl" id="clock-date" style="text-align:center"></div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-icon si-orange">📅</div><div><div class="stat-num sn-orange" id="st">—</div><div class="stat-lbl">Today</div></div></div>
+    <div class="stat-card" style="animation-delay:0.07s"><div class="stat-icon si-blue">📆</div><div><div class="stat-num sn-blue" id="sm">—</div><div class="stat-lbl">This Month</div></div></div>
+    <div class="stat-card" style="animation-delay:0.14s"><div class="stat-icon si-green">📋</div><div><div class="stat-num sn-green" id="sa">—</div><div class="stat-lbl">All Time</div></div></div>
+  </div>
+
+  <!-- FORM CARD -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon ci-blue">✏️</div>
+      <div>
+        <div class="card-title blue">Submit New Requisition</div>
+        <div style="font-size:12px;color:var(--ink4);margin-top:2px">Record a visitor's library item request</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Library Branch <span class="req">*</span></label>
+          <select class="form-control" id="lib-sel"><option value="">— Select —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Membership Card <span class="opt">(optional)</span></label>
+          <input type="text" class="form-control" id="membership" placeholder="Card number if member" maxlength="50">
+        </div>
+        <div class="form-divider"></div>
+        <div class="form-group col-full">
+          <div class="cat-panel">
+            <div class="cat-panel-label">Request Category <span class="req">*</span></div>
+            <div class="pill-group">
+              <div class="pill-opt"><input type="radio" name="cat" id="c-book" value="BOOK" checked><label for="c-book">📚 BOOK</label></div>
+              <div class="pill-opt"><input type="radio" name="cat" id="c-mag" value="MAGAZINE"><label for="c-mag">📰 MAGAZINE</label></div>
+              <div class="pill-opt"><input type="radio" name="cat" id="c-news" value="NEWSPAPER"><label for="c-news">🗞️ NEWSPAPER</label></div>
+            </div>
+            <div class="sub-strip" id="subtypes">
+              <div class="pill-opt orange"><input type="radio" name="sub" id="s-comp" value="Competitive Book" checked><label for="s-comp">🏆 Competitive Book</label></div>
+              <div class="pill-opt orange"><input type="radio" name="sub" id="s-subj" value="Subject Book"><label for="s-subj">📖 Subject Book</label></div>
+              <div class="pill-opt orange"><input type="radio" name="sub" id="s-other" value="Others"><label for="s-other">🔖 Others</label></div>
+            </div>
+            <div id="other-field" style="display:none;margin-top:0.75rem">
+              <input type="text" class="form-control" id="other-text" placeholder="Describe the type of book/item…" maxlength="200">
+            </div>
+          </div>
+        </div>
+        <div class="form-group col-full">
+          <label class="form-label" id="item-lbl">Book Name <span class="req">*</span></label>
+          <input type="text" class="form-control" id="item-name" placeholder="e.g., The Discovery of India" maxlength="200">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="submit-btn" onclick="submitReq()">➕ Submit Requisition</button>
+      <div class="msg-box" id="form-msg"></div>
+    </div>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="page-footer">
+  <div class="footer-copy">© 2026 Directorate of Education, Andaman &amp; Nicobar Islands. All rights reserved.</div>
+  <div class="footer-dev">Designed &amp; Developed by: Directorate of Education, A &amp; N Administration</div>
+  <div class="footer-visitors">Number of Visitors: <span id="visitor-count">—</span></div>
+  <div class="footer-browsers">
+    Supported Browsers:
+    <span class="browser-icon">🧭 Safari</span>
+    <span class="browser-icon">🦊 Firefox</span>
+    <span class="browser-icon">🌐 Chrome</span>
+    <span class="browser-icon">🔷 Edge</span>
+  </div>
+  <div class="contact-section">
+    <div class="contact-title">📍 Contact Us — Library Directory</div>
+    <div class="contact-grid" id="contact-grid"></div>
+  </div>
+</footer>
+
+<!-- PASSWORD MODAL -->
+<div id="pw-modal" style="position:fixed;inset:0;background:rgba(15,25,41,0.6);backdrop-filter:blur(4px);z-index:500;display:none;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:18px;width:100%;max-width:700px;max-height:90vh;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.35);">
+    <div style="background:linear-gradient(135deg,var(--violet),#8B5CF6);padding:1.1rem 1.4rem;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:14px;font-weight:800;color:#fff;display:flex;align-items:center;gap:0.4rem;">🔑 Manage Library Passwords</div>
+      <button onclick="closePw()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+    <div style="padding:1.25rem;overflow-y:auto;max-height:calc(90vh - 60px);">
+      <input type="text" class="form-control" id="lib-search" placeholder="🔍 Search library…" oninput="filterLibs(this.value)" style="margin-bottom:1rem">
+      <div id="lib-list" style="display:flex;flex-direction:column;gap:0.55rem;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/shared.js"></script>
+<script>
+const USER_ROLE   = '{{ role }}';
+const USER_LIB_ID = {{ library_id if library_id else 'null' }};
+const ALL_LIBS    = {{ libraries | tojson }};
+const CAT_LABELS  = {BOOK:'Book Name',MAGAZINE:'Magazine Name',NEWSPAPER:'Newspaper Name'};
+const CAT_PH      = {BOOK:'e.g., The Discovery of India',MAGAZINE:'e.g., National Geographic',NEWSPAPER:'e.g., The Hindu'};
+let allUsers = [];
+
+const CONTACTS = [
+  {name:'Zonal Library Wandoor',    addr:'Wandoor, South Andaman',          email:'lib.wandoor@doe.and.nic.in',    web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Manpur',     addr:'Manpur, South Andaman',           email:'lib.manpur@doe.and.nic.in',     web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Ferrargunj', addr:'Ferrargunj, South Andaman',       email:'lib.ferrargunj@doe.and.nic.in', web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Wimberlygunj',addr:'Wimberlygunj, South Andaman',    email:'lib.wimberlygunj@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Kadamtala',  addr:'Kadamtala, North &amp; Middle Andaman',email:'lib.kadamtala@doe.and.nic.in',  web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Bakultala',  addr:'Bakultala, North &amp; Middle Andaman',email:'lib.bakultala@doe.and.nic.in',  web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Rangat',     addr:'Rangat, North &amp; Middle Andaman',   email:'lib.rangat@doe.and.nic.in',     web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Billiground',addr:'Billiground, North Andaman',      email:'lib.billiground@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Diglipur',   addr:'Diglipur, North Andaman',         email:'lib.diglipur@doe.and.nic.in',   web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Vijay Nagar',addr:'Vijay Nagar, North Andaman',      email:'lib.vijaynagar@doe.and.nic.in', web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Campbell Bay',addr:'Campbell Bay, Nicobar',          email:'lib.campbellbay@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Kamorta',    addr:'Kamorta, Nicobar Islands',        email:'lib.kamorta@doe.and.nic.in',    web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Katchal',    addr:'Katchal, Nicobar Islands',        email:'lib.katchal@doe.and.nic.in',    web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Hutbay',     addr:'Hutbay, Little Andaman',          email:'lib.hutbay@doe.and.nic.in',     web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library R K Pur',    addr:'R K Pur, South Andaman',          email:'lib.rkpur@doe.and.nic.in',      web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Swaraj Dweep',addr:'Havelock Island, South Andaman', email:'lib.swarajdweep@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Shaheed Dweep',addr:'Neil Island, South Andaman',    email:'lib.shaheed@doe.and.nic.in',    web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Long Island',addr:'Long Island, Middle Andaman',     email:'lib.longisland@doe.and.nic.in', web:'https://education.andaman.gov.in'},
+];
+
+window.onload = () => {
+  buildTicker(ALL_LIBS);
+  const name = '{{ display }}';
+  document.getElementById('user-av').textContent = name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  populateLibraries();
+  loadStats();
+  buildContacts();
+  startClock('clock','clock-date');
+};
+
+function populateLibraries() {
+  const sel = document.getElementById('lib-sel');
+  if (USER_ROLE === 'master') {
+    ALL_LIBS.forEach(([id,name]) => sel.innerHTML += `<option value="${id}">${name}</option>`);
+  } else {
+    const lib = ALL_LIBS.find(([id]) => id === USER_LIB_ID);
+    if (lib) { sel.innerHTML = `<option value="${lib[0]}">${lib[1]}</option>`; sel.disabled = true; }
+  }
+}
+
+function buildContacts() {
+  const grid = document.getElementById('contact-grid');
+  grid.innerHTML = CONTACTS.map(c => `
+    <div class="contact-card">
+      <div class="contact-lib-name">🏛️ ${c.name}</div>
+      <div class="contact-line">📍 ${c.addr}</div>
+      <div class="contact-line">✉️ <a href="mailto:${c.email}">${c.email}</a></div>
+      <div class="contact-line">🌐 <a href="${c.web}" target="_blank">education.andaman.gov.in</a></div>
+    </div>`).join('');
+}
+
+document.querySelectorAll('input[name="cat"]').forEach(r => r.addEventListener('change', updateCat));
+document.querySelectorAll('input[name="sub"]').forEach(r => r.addEventListener('change', () => {
+  document.getElementById('other-field').style.display = r.checked && r.value==='Others' ? 'block' : 'none';
+}));
+
+function updateCat() {
+  const cat = document.querySelector('input[name="cat"]:checked').value;
+  document.getElementById('subtypes').style.display = cat==='BOOK' ? 'flex' : 'none';
+  document.getElementById('other-field').style.display = 'none';
+  document.getElementById('item-lbl').innerHTML = (CAT_LABELS[cat]||'Item Name') + ' <span class="req">*</span>';
+  document.getElementById('item-name').placeholder = CAT_PH[cat]||'Enter item name…';
+}
+
+async function loadStats() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const d = new Date(); d.setDate(1);
+    const ms = d.toISOString().split('T')[0];
+    const [t,m,al] = await Promise.all([
+      fetch(`/api/reports/all?start_date=${today}&end_date=${today}`).then(r=>r.json()),
+      fetch(`/api/reports/all?start_date=${ms}&end_date=${today}`).then(r=>r.json()),
+      fetch('/api/reports/all').then(r=>r.json()),
+    ]);
+    document.getElementById('st').textContent = t.length;
+    document.getElementById('sm').textContent = m.length;
+    document.getElementById('sa').textContent = al.length;
+  } catch(e){}
+}
+
+async function submitReq() {
+  const libEl = document.getElementById('lib-sel');
+  const lib_id = USER_ROLE==='master' ? parseInt(libEl.value) : USER_LIB_ID;
+  const membership = document.getElementById('membership').value.trim();
+  const cat = document.querySelector('input[name="cat"]:checked').value;
+  const sub = cat==='BOOK' ? (document.querySelector('input[name="sub"]:checked')?.value||null) : null;
+  const otherTxt = document.getElementById('other-text').value.trim();
+  const itemName = document.getElementById('item-name').value.trim();
+  const btn = document.getElementById('submit-btn');
+
+  if (USER_ROLE==='master' && !lib_id) return showMsg('form-msg','error','⚠️ Please select a library branch.');
+  if (!itemName) return showMsg('form-msg','error',`⚠️ Please enter the ${CAT_LABELS[cat].toLowerCase()}.`);
+  if (cat==='BOOK' && sub==='Others' && !otherTxt) return showMsg('form-msg','error','⚠️ Please describe the type for "Others".');
+
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Submitting…';
+  document.getElementById('form-msg').className='msg-box';
+  try {
+    const res = await fetch('/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({library_id:lib_id,membership_card_number:membership||null,
+        requested_item_type:cat,requested_item_subtype:sub,requested_item_name:itemName,
+        other_description:sub==='Others'?otherTxt:null})});
+    const data = await res.json();
+    if (res.ok) {
+      showMsg('form-msg','success',`✅ Submitted! "${itemName}" recorded.`);
+      document.getElementById('item-name').value='';
+      document.getElementById('membership').value='';
+      document.getElementById('other-text').value='';
+      loadStats();
+    } else showMsg('form-msg','error','❌ '+(data.error||'Failed.'));
+  } catch(e) { showMsg('form-msg','error','❌ Network error.'); }
+  finally { btn.disabled=false; btn.innerHTML='➕ Submit Requisition'; }
+}
+
+// Password modal
+async function openPwModal() {
+  const modal = document.getElementById('pw-modal');
+  modal.style.display='flex';
+  const res = await fetch('/api/users');
+  allUsers = await res.json();
+  renderLibList(allUsers);
+}
+function closePw() { document.getElementById('pw-modal').style.display='none'; }
+document.getElementById('pw-modal')?.addEventListener('click', e => { if(e.target===e.currentTarget) closePw(); });
+
+function filterLibs(q) {
+  renderLibList(allUsers.filter(u => u.display.toLowerCase().includes(q.toLowerCase()) || u.username.toLowerCase().includes(q.toLowerCase())));
+}
+
+function renderLibList(users) {
+  const el = document.getElementById('lib-list');
+  if (!users.length) { el.innerHTML='<p style="color:var(--ink4);text-align:center;padding:1rem;font-size:12px">No libraries found.</p>'; return; }
+  el.innerHTML = users.map(u => `
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:0.75rem 1rem;display:flex;align-items:center;gap:0.65rem;flex-wrap:wrap;">
+      <div style="flex:1;min-width:150px">
+        <div style="font-size:13px;font-weight:700;color:var(--ink)">🏛️ ${esc(u.display)}</div>
+        <span style="font-size:11px;color:var(--ink4);font-family:monospace;background:var(--surface3);padding:0.1rem 0.4rem;border-radius:4px">${esc(u.username)}</span>
+      </div>
+      <div style="display:flex;gap:0.45rem;align-items:center;flex:1;min-width:200px">
+        <input type="text" class="form-control" id="pw-${esc(u.username)}" value="${esc(u.password)}" placeholder="New password…" style="font-family:monospace;font-size:12px">
+        <button onclick="savePw('${esc(u.username)}')" style="padding:0.5rem 0.85rem;background:var(--violet);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Save</button>
+        <span id="ps-${esc(u.username)}" style="font-size:11px;font-weight:600;min-width:50px"></span>
+      </div>
+    </div>`).join('');
+}
+
+async function savePw(username) {
+  const inp = document.getElementById(`pw-${username}`);
+  const stat = document.getElementById(`ps-${username}`);
+  const newPw = inp.value.trim();
+  if (!newPw || newPw.length < 6) { stat.style.color='var(--crimson)'; stat.textContent='Min 6 chars'; return; }
+  stat.style.color='var(--ink4)'; stat.textContent='Saving…';
+  try {
+    const res = await fetch('/api/users/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,new_password:newPw})});
+    const data = await res.json();
+    if (data.success) { stat.style.color='var(--emerald)'; stat.textContent='✅ Saved!'; const u=allUsers.find(u=>u.username===username); if(u) u.password=newPw; }
+    else { stat.style.color='var(--crimson)'; stat.textContent='❌ '+data.error; }
+  } catch(e) { stat.style.color='var(--crimson)'; stat.textContent='❌ Error'; }
+  setTimeout(()=>{ stat.textContent=''; },3000);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reports — Library Management System</title>
+<link rel="stylesheet" href="/static/shared.css">
+<style>
+body { padding-bottom: 2rem; }
+main { max-width: 1300px; margin: 0 auto; padding: 1.75rem 1.25rem 3rem; position: relative; z-index: 1; }
+.hero-wrap { display:flex;align-items:center;gap:1.1rem;margin-bottom:1.4rem; }
+.hero-wrap .page-hero { flex:1;margin-bottom:0; }
+.clock-card { background:var(--card-bg);border:1.5px solid var(--border);border-radius:var(--radius);padding:0.75rem 0.9rem;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:105px;box-shadow:0 2px 10px var(--shadow);transition:background 0.3s; }
+</style>
+</head>
+<body>
+<canvas id="star-canvas"></canvas>
+
+<!-- TICKER -->
+<div class="ticker-wrap"><div class="ticker-inner" id="ticker-inner"></div></div>
+
+<!-- NAV -->
+<nav class="main-nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <img class="nav-logo" src="/static/logo.png" alt="Logo">
+      <div>
+        <div class="nav-title-main">Directorate of Education, A&N Islands</div>
+        <div class="nav-title-sub">Library Management System — Reports</div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="user-pill">
+        <div class="user-avatar" id="user-av"></div>
+        <span class="user-name">{{ display }}</span>
+        <span class="role-tag {{ 'rt-master' if role=='master' else 'rt-admin' }}">{{ 'Master' if role=='master' else 'Admin' }}</span>
+      </div>
+      <a href="/dashboard" class="btn-nav">⬅ Dashboard</a>
+      <button class="btn-nav" onclick="window.print()" style="color:var(--emerald);border-color:rgba(10,138,94,0.3)">🖨️ Print</button>
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">🌙</button>
+      <button class="btn-nav danger" onclick="doLogout()">⏻ Exit</button>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <!-- HERO + CLOCK -->
+  <div class="hero-wrap">
+    <div class="page-hero">
+      <div><div class="hero-title">📊 Reports Dashboard</div><div class="hero-sub">Filter and analyse library requisitions and visitor feedback</div></div>
+      <div class="hero-badge" id="ph-date"></div>
+    </div>
+    <div class="clock-card">
+      <canvas id="clock" width="76" height="76"></canvas>
+      <div class="clock-date-lbl" id="clock-date" style="text-align:center"></div>
+    </div>
+  </div>
+
+  <!-- REPORT TYPE TABS -->
+  <div class="rtabs">
+    <button class="rtab active-req" id="rtab-req" onclick="switchRTab('req')">📋 Requisitions Report</button>
+    {% if role == 'master' %}
+    <button class="rtab" id="rtab-fb" onclick="switchRTab('fb')">💬 Feedback Report</button>
+    {% endif %}
+  </div>
+
+  <!-- ═════════════ REQUISITIONS PANEL ═════════════ -->
+  <div class="rpanel active" id="rpanel-req">
+    <div class="filter-card">
+      <div class="filter-heading">🔍 Filter Requisitions</div>
+      <div class="filter-grid-5">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input type="date" class="form-control" id="req-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date</label>
+          <input type="date" class="form-control" id="req-end">
+        </div>
+        <div class="form-group" id="req-lib-wrap">
+          <label class="form-label">Library</label>
+          <select class="form-control" id="req-lib">
+            <option value="all">All Libraries</option>
+            {% for lid,lname in libraries %}<option value="{{ lid }}">{{ lname }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Card Number</label>
+          <input type="text" class="form-control" id="req-card" placeholder="Filter by card no.">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-control" id="req-type">
+            <option value="all">All Types</option>
+            <option value="BOOK">Book</option>
+            <option value="MAGAZINE">Magazine</option>
+            <option value="NEWSPAPER">Newspaper</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:0.85rem">
+        <button class="btn btn-primary" id="req-gen-btn" onclick="generateReq()">Generate Report</button>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="sum-grid">
+      <div class="sum-card sc1"><div class="stat-icon si-blue" style="width:38px;height:38px;font-size:1.1rem">📋</div><div><div class="stat-num sn-blue" id="s-total" style="font-size:20px">—</div><div class="stat-lbl">Total</div></div></div>
+      <div class="sum-card sc2"><div class="stat-icon si-orange" style="width:38px;height:38px;font-size:1.1rem">📚</div><div><div class="stat-num sn-orange" id="s-books" style="font-size:20px">—</div><div class="stat-lbl">Books</div></div></div>
+      <div class="sum-card sc3"><div class="stat-icon si-green" style="width:38px;height:38px;font-size:1.1rem">📰</div><div><div class="stat-num sn-green" id="s-mag" style="font-size:20px">—</div><div class="stat-lbl">Magazines</div></div></div>
+      <div class="sum-card sc4" style="--sc4-color:var(--violet)"><div class="stat-icon" style="width:38px;height:38px;font-size:1.1rem;background:var(--viol-lt)">🗞️</div><div><div class="stat-num" id="s-news" style="font-size:20px;color:var(--violet)">—</div><div class="stat-lbl">Newspapers</div></div></div>
+    </div>
+
+    <div class="report-cols">
+      <div class="r-card">
+        <div class="r-head"><div class="r-title">📋 All Requisitions</div><span class="r-count" id="req-row-count">0 records</span></div>
+        <div id="req-table"><div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">Click <strong>Generate Report</strong> to load data</div></div></div>
+        <div class="report-meta" id="req-meta" style="display:none"></div>
+      </div>
+      <div class="r-card">
+        <div class="r-head"><div class="r-title">🏆 Top Requested</div></div>
+        <div id="req-popular"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">No data yet</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════ FEEDBACK PANEL ═════════════ -->
+  {% if role == 'master' %}
+  <div class="rpanel" id="rpanel-fb">
+    <div class="filter-card">
+      <div class="filter-heading">🔍 Filter Feedback</div>
+      <div class="filter-grid">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input type="date" class="form-control" id="fb-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date</label>
+          <input type="date" class="form-control" id="fb-end">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Library</label>
+          <select class="form-control" id="fb-lib">
+            <option value="all">All Libraries</option>
+            {% for lid,lname in libraries %}<option value="{{ lid }}">{{ lname }}</option>{% endfor %}
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-success" id="fb-gen-btn" onclick="generateFeedback()">Load Feedback</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedback summary cards -->
+    <div class="sum-grid" id="fb-sum-grid" style="display:none">
+      <div class="sum-card sc1"><div class="stat-icon si-blue" style="width:38px;height:38px;font-size:1.1rem">💬</div><div><div class="stat-num sn-blue" id="fb-total" style="font-size:20px">—</div><div class="stat-lbl">Total Feedback</div></div></div>
+      <div class="sum-card sc2"><div class="stat-icon si-green" style="width:38px;height:38px;font-size:1.1rem">✅</div><div><div class="stat-num sn-green" id="fb-mat-yes" style="font-size:20px">—</div><div class="stat-lbl">Materials Adequate</div></div></div>
+      <div class="sum-card sc3"><div class="stat-icon si-orange" style="width:38px;height:38px;font-size:1.1rem">👥</div><div><div class="stat-num sn-orange" id="fb-staff-yes" style="font-size:20px">—</div><div class="stat-lbl">Staff Adequate</div></div></div>
+      <div class="sum-card sc4"><div class="stat-icon" style="width:38px;height:38px;font-size:1.1rem;background:var(--viol-lt)">🏛️</div><div><div class="stat-num" id="fb-amb-yes" style="font-size:20px;color:var(--violet)">—</div><div class="stat-lbl">Good Ambiance</div></div></div>
+    </div>
+
+    <div class="r-card">
+      <div class="r-head"><div class="r-title" style="color:var(--emerald)">💬 Visitor Feedback Submissions</div><span class="r-count" id="fb-row-count" style="background:var(--emer-lt);border-color:rgba(10,138,94,0.2)">0 records</span></div>
+      <div id="fb-table"><div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">Click <strong>Load Feedback</strong> to view submissions</div></div></div>
+      <div class="report-meta" id="fb-meta" style="display:none"></div>
+    </div>
+  </div>
+  {% endif %}
+</main>
+
+<!-- FOOTER -->
+<footer class="page-footer">
+  <div class="footer-copy">© 2026 Directorate of Education, Andaman &amp; Nicobar Islands. All rights reserved.</div>
+  <div class="footer-dev">Designed &amp; Developed by: Directorate of Education, A &amp; N Administration</div>
+  <div class="footer-visitors">Number of Visitors: <span id="visitor-count">—</span></div>
+  <div class="footer-browsers">
+    Supported Browsers:
+    <span class="browser-icon">🧭 Safari</span>
+    <span class="browser-icon">🦊 Firefox</span>
+    <span class="browser-icon">🌐 Chrome</span>
+    <span class="browser-icon">🔷 Edge</span>
+  </div>
+  <div class="contact-section">
+    <div class="contact-title">📍 Contact Us — Library Directory</div>
+    <div class="contact-grid" id="contact-grid"></div>
+  </div>
+</footer>
+
+<script src="/static/shared.js"></script>
+<script>
+const USER_ROLE   = '{{ role }}';
+const USER_LIB_ID = {{ library_id if library_id else 'null' }};
+const ALL_LIBS    = {{ libraries | tojson }};
+
+const CONTACTS = [
+  {name:'Zonal Library Wandoor',addr:'Wandoor, South Andaman',email:'lib.wandoor@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Manpur',addr:'Manpur, South Andaman',email:'lib.manpur@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Ferrargunj',addr:'Ferrargunj, South Andaman',email:'lib.ferrargunj@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Wimberlygunj',addr:'Wimberlygunj, South Andaman',email:'lib.wimberlygunj@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Kadamtala',addr:'Kadamtala, N&M Andaman',email:'lib.kadamtala@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Bakultala',addr:'Bakultala, N&M Andaman',email:'lib.bakultala@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Rangat',addr:'Rangat, N&M Andaman',email:'lib.rangat@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Billiground',addr:'Billiground, North Andaman',email:'lib.billiground@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Diglipur',addr:'Diglipur, North Andaman',email:'lib.diglipur@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Vijay Nagar',addr:'Vijay Nagar, North Andaman',email:'lib.vijaynagar@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Campbell Bay',addr:'Campbell Bay, Nicobar',email:'lib.campbellbay@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Kamorta',addr:'Kamorta, Nicobar Islands',email:'lib.kamorta@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Katchal',addr:'Katchal, Nicobar Islands',email:'lib.katchal@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Hutbay',addr:'Hutbay, Little Andaman',email:'lib.hutbay@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library R K Pur',addr:'R K Pur, South Andaman',email:'lib.rkpur@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Swaraj Dweep',addr:'Havelock Island, South Andaman',email:'lib.swarajdweep@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Shaheed Dweep',addr:'Neil Island, South Andaman',email:'lib.shaheed@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+  {name:'Zonal Library Long Island',addr:'Long Island, Middle Andaman',email:'lib.longisland@doe.and.nic.in',web:'https://education.andaman.gov.in'},
+];
+
+window.onload = () => {
+  buildTicker(ALL_LIBS);
+  const today = new Date().toISOString().split('T')[0];
+  const d = new Date(); d.setDate(1); const ms = d.toISOString().split('T')[0];
+  ['req-start','fb-start'].forEach(id => { const el=document.getElementById(id); if(el) el.value=ms; });
+  ['req-end','fb-end'].forEach(id => { const el=document.getElementById(id); if(el) el.value=today; });
+  document.getElementById('ph-date').textContent = new Date().toLocaleDateString('en-IN',{weekday:'short',year:'numeric',month:'long',day:'numeric'});
+  const name = '{{ display }}';
+  document.getElementById('user-av').textContent = name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  if (USER_ROLE !== 'master' && document.getElementById('req-lib-wrap')) {
+    document.getElementById('req-lib-wrap').style.display='none';
+  }
+  buildContacts();
+  startClock('clock','clock-date');
+  generateReq();
+};
+
+function buildContacts() {
+  const grid = document.getElementById('contact-grid');
+  if (!grid) return;
+  grid.innerHTML = CONTACTS.map(c=>`
+    <div class="contact-card">
+      <div class="contact-lib-name">🏛️ ${c.name}</div>
+      <div class="contact-line">📍 ${c.addr}</div>
+      <div class="contact-line">✉️ <a href="mailto:${c.email}">${c.email}</a></div>
+      <div class="contact-line">🌐 <a href="${c.web}" target="_blank">education.andaman.gov.in</a></div>
+    </div>`).join('');
+}
+
+function switchRTab(tab) {
+  ['req','fb'].forEach(t => {
+    const p = document.getElementById(`rpanel-${t}`);
+    const b = document.getElementById(`rtab-${t}`);
+    if (p) p.classList.toggle('active', t===tab);
+    if (b) b.className = 'rtab' + (t===tab ? (t==='req'?' active-req':' active-fb') : '');
+  });
+}
+
+// ── REQUISITIONS ──────────────────────────────────────────────────────────────
+async function generateReq() {
+  const start   = document.getElementById('req-start').value;
+  const end     = document.getElementById('req-end').value;
+  const libId   = USER_ROLE==='master' ? document.getElementById('req-lib').value : USER_LIB_ID;
+  const cardFil = document.getElementById('req-card').value.trim();
+  const typeFil = document.getElementById('req-type').value;
+  const btn     = document.getElementById('req-gen-btn');
+
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Loading…';
+  document.getElementById('req-table').innerHTML   = '<div class="empty-state"><div class="empty-icon"><span class="spinner dark" style="width:20px;height:20px"></span></div><div class="empty-text">Fetching records…</div></div>';
+  document.getElementById('req-popular').innerHTML = '<div class="empty-state"><span class="spinner dark" style="width:20px;height:20px"></span></div>';
+
+  const params = new URLSearchParams();
+  if (start) params.set('start_date', start);
+  if (end)   params.set('end_date', end);
+  params.set('library_id', libId||'all');
+
+  try {
+    let [allRows, pop, sum] = await Promise.all([
+      fetch(`/api/reports/all?${params}`).then(r=>r.json()),
+      fetch(`/api/reports/popular?${params}`).then(r=>r.json()),
+      fetch(`/api/reports/summary?${params}`).then(r=>r.json()),
+    ]);
+
+    // Client-side filter by card number and type
+    if (cardFil) allRows = allRows.filter(r => (r.membership_card_number||'').toLowerCase().includes(cardFil.toLowerCase()));
+    if (typeFil !== 'all') allRows = allRows.filter(r => r.requested_item_type === typeFil);
+
+    renderReqSummary(sum);
+    renderReqTable(allRows);
+    renderPopular(pop);
+
+    const libName = !libId||libId==='all' ? 'All Libraries' : (ALL_LIBS.find(([id])=>id==libId)?.[1]||'Library');
+    const m = document.getElementById('req-meta');
+    m.style.display='block';
+    m.textContent = `${libName}  ·  ${start||'All time'} → ${end||'Today'}${cardFil?' · Card: '+cardFil:''}${typeFil!=='all'?' · Type: '+typeFil:''}`;
+  } catch(e) {
+    document.getElementById('req-table').innerHTML = '<div class="empty-state"><div class="empty-text" style="color:var(--crimson)">❌ Failed to load. Please try again.</div></div>';
+  } finally { btn.disabled=false; btn.innerHTML='Generate Report'; }
+}
+
+function renderReqSummary(s) {
+  document.getElementById('s-total').textContent = s.total;
+  const bt = {}; (s.by_type||[]).forEach(t => bt[t.requested_item_type]=t.c);
+  document.getElementById('s-books').textContent = bt['BOOK']||0;
+  document.getElementById('s-mag').textContent   = bt['MAGAZINE']||0;
+  document.getElementById('s-news').textContent  = bt['NEWSPAPER']||0;
+}
+
+function renderReqTable(rows) {
+  document.getElementById('req-row-count').textContent = rows.length+' records';
+  if (!rows.length) { document.getElementById('req-table').innerHTML='<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No requisitions found for this filter.</div></div>'; return; }
+  const tc = {BOOK:'badge-book',MAGAZINE:'badge-magazine',NEWSPAPER:'badge-newspaper'};
+  const html = rows.map((r,i) => `
+    <tr>
+      <td class="muted">${i+1}</td>
+      <td class="muted">${esc(r.request_date)}</td>
+      ${USER_ROLE==='master'?`<td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.library_name)}</td>`:''}
+      <td><span style="font-weight:600;font-size:12px">${esc(r.requested_item_name)}</span>${r.other_description?`<span class="badge badge-sub" style="margin-left:4px">${esc(r.other_description)}</span>`:''}${r.submitted_by==='guest'?'<span class="badge badge-guest" style="margin-left:4px">visitor</span>':''}</td>
+      <td><span class="badge ${tc[r.requested_item_type]||'badge-book'}">${esc(r.requested_item_type)}</span></td>
+      <td>${r.requested_item_subtype?`<span class="badge badge-sub">${esc(r.requested_item_subtype)}</span>`:'<span class="muted">—</span>'}</td>
+      <td class="muted">${r.membership_card_number||'—'}</td>
+    </tr>`).join('');
+  document.getElementById('req-table').innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Date</th>${USER_ROLE==='master'?'<th>Library</th>':''}<th>Item Name</th><th>Type</th><th>Sub-type</th><th>Card No.</th></tr></thead><tbody>${html}</tbody></table></div>`;
+}
+
+function renderPopular(items) {
+  if (!items.length) { document.getElementById('req-popular').innerHTML='<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No data found.</div></div>'; return; }
+  const max = items[0].count;
+  const rc = ['r1','r2','r3','r4','r5','r6','r7','r8','r9','r10'];
+  const html = items.map((item,i) => `
+    <div class="bar-item">
+      <div class="bar-row"><span class="bar-rank ${rc[i]}">${i+1}</span><span class="bar-name" title="${esc(item.requested_item_name)}">${esc(item.requested_item_name)}</span><span class="bar-count">${item.count}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round((item.count/max)*100)}%"></div></div>
+    </div>`).join('');
+  document.getElementById('req-popular').innerHTML = html;
+}
+
+// ── FEEDBACK ──────────────────────────────────────────────────────────────────
+async function generateFeedback() {
+  const start = document.getElementById('fb-start').value;
+  const end   = document.getElementById('fb-end').value;
+  const libId = document.getElementById('fb-lib').value;
+  const btn   = document.getElementById('fb-gen-btn');
+
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Loading…';
+  document.getElementById('fb-table').innerHTML='<div class="empty-state"><span class="spinner dark" style="width:20px;height:20px;display:inline-block"></span></div>';
+
+  const params = new URLSearchParams();
+  if (start) params.set('start_date', start);
+  if (end)   params.set('end_date', end);
+  params.set('library_id', libId);
+
+  try {
+    const rows = await fetch(`/api/reports/feedback?${params}`).then(r=>r.json());
+    document.getElementById('fb-row-count').textContent = rows.length+' records';
+
+    // Summary
+    const fbSumGrid = document.getElementById('fb-sum-grid');
+    if (fbSumGrid) {
+      fbSumGrid.style.display = 'grid';
+      document.getElementById('fb-total').textContent = rows.length;
+      document.getElementById('fb-mat-yes').textContent = rows.filter(r=>r.materials_adequate==='Yes').length;
+      document.getElementById('fb-staff-yes').textContent = rows.filter(r=>r.staff_assistance==='Yes').length;
+      document.getElementById('fb-amb-yes').textContent = rows.filter(r=>r.ambiance_satisfactory==='Yes').length;
+    }
+
+    if (!rows.length) { document.getElementById('fb-table').innerHTML='<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No feedback found for this period.</div></div>'; return; }
+
+    const yn = v => v ? `<span class="badge ${v==='Yes'?'badge-yes':'badge-no'}">${v}</span>` : '<span class="muted">—</span>';
+    const html = rows.map((r,i) => `
+      <tr>
+        <td class="muted">${i+1}</td>
+        <td class="muted">${esc(r.submission_date)}</td>
+        <td style="font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.library_name)}</td>
+        <td><span style="font-weight:600;font-size:12px">${esc(r.reader_name)||'<span class="muted">Anonymous</span>'}</span></td>
+        <td class="muted">${esc(r.gender)||'—'}</td>
+        <td class="muted">${r.age||'—'}</td>
+        <td class="muted">${esc(r.occupation)||'—'}</td>
+        <td class="muted">${esc(r.visit_frequency)||'—'}</td>
+        <td class="muted">${esc(r.preferred_language)||'—'}</td>
+        <td>${yn(r.materials_adequate)}</td>
+        <td>${yn(r.staff_assistance)}</td>
+        <td>${yn(r.ambiance_satisfactory)}</td>
+        <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--ink3)">${esc(r.suggestions)||'—'}</td>
+      </tr>`).join('');
+
+    document.getElementById('fb-table').innerHTML = `<div class="tbl-wrap"><table>
+      <thead><tr><th>#</th><th>Date</th><th>Library</th><th>Name</th><th>Gender</th><th>Age</th><th>Occupation</th><th>Frequency</th><th>Language</th><th>Materials OK?</th><th>Staff OK?</th><th>Ambiance OK?</th><th>Suggestions</th></tr></thead>
+      <tbody>${html}</tbody></table></div>`;
+
+    const m = document.getElementById('fb-meta');
+    m.style.display='block';
+    const libName = libId==='all' ? 'All Libraries' : (ALL_LIBS.find(([id])=>id==libId)?.[1]||'Library');
+    m.textContent = `${libName}  ·  ${start||'All time'} → ${end||'Today'}`;
+  } catch(e) {
+    document.getElementById('fb-table').innerHTML='<div class="empty-state"><div class="empty-text" style="color:var(--crimson)">❌ Failed to load.</div></div>';
+  } finally { btn.disabled=false; btn.innerHTML='Load Feedback'; }
+}
+</script>
+</body>
+</html>
